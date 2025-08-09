@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Boston Bolts • Performance Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bolts-blue: #1e3a8a;
+      --bolts-green: #22c55e;
+      --bolts-dark: #0f172a;
+      --bolts-card: #111827;
+    }
+    html,body{ font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    body{ background: linear-gradient(180deg, var(--bolts-dark) 0%, #111827 100%); color: #e5e7eb; }
+    .card{ background: var(--bolts-card); border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .chip{ background: var(--bolts-green); color:#052e16; font-weight:800; }
+    .pill{ border: 1px solid rgba(255,255,255,0.12); }
+  </style>
+</head>
+<body>
+  <div class="max-w-screen-2xl mx-auto px-5 py-6">
+    <!-- Header -->
+    <header class="rounded-2xl p-4 md:p-5 bg-gradient-to-r from-[var(--bolts-blue)] to-blue-800 shadow-2xl flex items-center justify-between">
+      <div class="flex items-center gap-3 md:gap-4">
+        <img src="BostonBoltsLogo.png" class="w-12 h-12 md:w-14 md:h-14" alt="Boston Bolts" />
+        <div>
+          <div class="text-white font-extrabold text-xl md:text-2xl tracking-tight">Boston Bolts • Performance Hub</div>
+          <div class="text-emerald-200 text-xs md:text-sm opacity-90">Modern analytics for coaches</div>
+        </div>
+      </div>
+      <div class="chip text-xs md:text-sm px-3 py-1 rounded-full">LIVE</div>
+    </header>
+
+    <!-- Top Nav (static for now) -->
+    <nav class="mt-5 flex flex-wrap gap-2">
+      <a class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" href="#gauges">Gauges</a>
+      <a class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" href="#acwr">ACWR</a>
+      <a class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" href="#radars">Physical Radar Charts</a>
+      <a class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" href="#testing">Testing Data</a>
+    </nav>
+
+    <!-- Hero / Quick actions -->
+    <section class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="card rounded-xl p-4 md:col-span-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg md:text-xl font-bold">Team Overview</h2>
+            <p class="text-sm text-white/70">Select a team and player to explore dashboards</p>
+          </div>
+          <img src="MLSNextLogo.png" class="h-10 opacity-80" alt="MLS Next" />
+        </div>
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="bg-white/5 rounded-lg p-3 border border-white/10">
+            <div class="text-xs text-white/70">Quick Metric</div>
+            <div class="text-2xl font-extrabold">Top Speed</div>
+            <div class="text-sm text-emerald-300">75th percentile (Team)</div>
+          </div>
+          <div class="bg-white/5 rounded-lg p-3 border border-white/10">
+            <div class="text-xs text-white/70">Quick Metric</div>
+            <div class="text-2xl font-extrabold">HSR Distance</div>
+            <div class="text-sm text-emerald-300">68th percentile (Position)</div>
+          </div>
+          <div class="bg-white/5 rounded-lg p-3 border border-white/10">
+            <div class="text-xs text-white/70">Quick Metric</div>
+            <div class="text-2xl font-extrabold">Sprint Count</div>
+            <div class="text-sm text-emerald-300">62nd percentile (Team)</div>
+          </div>
+        </div>
+      </div>
+      <div class="card rounded-xl p-4">
+        <h3 class="text-lg font-bold">Jump to</h3>
+        <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <a href="#gauges" class="bg-white/5 hover:bg-white/10 rounded-lg p-3 border border-white/10">Gauges</a>
+          <a href="#acwr" class="bg-white/5 hover:bg-white/10 rounded-lg p-3 border border-white/10">ACWR</a>
+          <a href="#radars" class="bg-white/5 hover:bg-white/10 rounded-lg p-3 border border-white/10">Physical Radars</a>
+          <a href="#testing" class="bg-white/5 hover:bg-white/10 rounded-lg p-3 border border-white/10">Testing Data</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sections (static placeholders) -->
+    <section id="gauges" class="mt-8">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-extrabold">Player Gauges</h2>
+        <span class="text-xs text-white/60">Excel is master data • API enriched</span>
+      </div>
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="card rounded-xl p-5"><div class="text-white/70 text-sm">Gauge 1</div><div class="mt-2 h-40 bg-white/5 rounded-md border border-white/10"></div></div>
+        <div class="card rounded-xl p-5"><div class="text-white/70 text-sm">Gauge 2</div><div class="mt-2 h-40 bg-white/5 rounded-md border border-white/10"></div></div>
+        <div class="card rounded-xl p-5"><div class="text-white/70 text-sm">Gauge 3</div><div class="mt-2 h-40 bg-white/5 rounded-md border border-white/10"></div></div>
+      </div>
+    </section>
+
+    <section id="acwr" class="mt-10">
+      <h2 class="text-xl font-extrabold">ACWR</h2>
+      <div class="mt-4 card rounded-xl p-5 h-48 border border-white/10"></div>
+    </section>
+
+    <section id="radars" class="mt-10">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-extrabold">Physical Radar Charts</h2>
+        <span class="text-xs text-white/60">Percentiles vs Team / Position</span>
+      </div>
+      <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="card rounded-xl p-5 h-72 border border-white/10">Match • Player only</div>
+        <div class="card rounded-xl p-5 h-72 border border-white/10">Match • vs Position</div>
+        <div class="card rounded-xl p-5 h-72 border border-white/10">Training • Player only</div>
+        <div class="card rounded-xl p-5 h-72 border border-white/10">Training • vs Position</div>
+      </div>
+    </section>
+
+    <section id="testing" class="mt-10 mb-12">
+      <h2 class="text-xl font-extrabold">Testing Data</h2>
+      <div class="mt-4 card rounded-xl p-5 h-48 border border-white/10"></div>
+    </section>
+
+    <footer class="mt-6 text-center text-xs text-white/50">© Boston Bolts • Performance Hub</footer>
+  </div>
+</body>
+</html>
+
