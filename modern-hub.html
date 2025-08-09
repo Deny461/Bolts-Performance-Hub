@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Boston Bolts • Performance Hub</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{
@@ -22,6 +23,25 @@
 </head>
 <body>
   <div class="max-w-screen-2xl mx-auto px-5 py-6">
+    <!-- Login overlay -->
+    <div id="loginOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+      <div class="w-full max-w-sm card rounded-2xl p-6">
+        <div class="text-xl font-extrabold mb-1">Coach Login</div>
+        <div class="text-white/60 text-sm mb-4">Enter your credentials</div>
+        <div class="space-y-3">
+          <div>
+            <div class="text-white/70 text-xs mb-1">Username</div>
+            <input id="loginUser" class="w-full bg-white/5 border border-white/10 rounded-md p-2 outline-none" placeholder="e.g., denis" />
+          </div>
+          <div>
+            <div class="text-white/70 text-xs mb-1">Password</div>
+            <input id="loginPass" type="password" class="w-full bg-white/5 border border-white/10 rounded-md p-2 outline-none" placeholder="••••••" />
+          </div>
+          <div id="loginError" class="text-red-400 text-xs h-4"></div>
+          <button id="loginBtn" class="w-full bg-[var(--bolts-green)] text-green-950 font-bold py-2 rounded-md">Sign in</button>
+        </div>
+      </div>
+    </div>
     <!-- Header -->
     <header class="rounded-2xl p-4 md:p-5 bg-gradient-to-r from-[var(--bolts-blue)] to-blue-800 shadow-2xl flex items-center justify-between">
       <div class="flex items-center gap-3 md:gap-4">
@@ -98,10 +118,10 @@
         <span class="text-xs text-white/60">Percentiles vs Team / Position</span>
       </div>
       <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="card rounded-xl p-5 h-72 border border-white/10">Match • Player only</div>
-        <div class="card rounded-xl p-5 h-72 border border-white/10">Match • vs Position</div>
-        <div class="card rounded-xl p-5 h-72 border border-white/10">Training • Player only</div>
-        <div class="card rounded-xl p-5 h-72 border border-white/10">Training • vs Position</div>
+        <div class="card rounded-xl p-5 border border-white/10"><div class="text-sm text-white/70 mb-2">Testing-based • Player vs Team (percentiles)</div><canvas id="radarTeam"></canvas></div>
+        <div class="card rounded-xl p-5 border border-white/10"><div class="text-sm text-white/70 mb-2">Testing-based • Player vs Position (percentiles)</div><canvas id="radarPosition"></canvas></div>
+        <div class="card rounded-xl p-5 border border-white/10"><div class="text-sm text-white/70 mb-2">(Reserved) Match • Player only</div><canvas id="radarMatch"></canvas></div>
+        <div class="card rounded-xl p-5 border border-white/10"><div class="text-sm text-white/70 mb-2">(Reserved) Training • Player vs Position</div><canvas id="radarTraining"></canvas></div>
       </div>
     </section>
 
@@ -120,6 +140,13 @@
     const statusText = document.getElementById('statusText');
     const playerSummary = document.getElementById('playerSummary');
     const testingData = document.getElementById('testingData');
+    const loginOverlay = document.getElementById('loginOverlay');
+    const loginUser = document.getElementById('loginUser');
+    const loginPass = document.getElementById('loginPass');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+    let session = JSON.parse(localStorage.getItem('bolts_session')||'null');
+    let chartTeam, chartPosition, chartMatch, chartTraining;
 
     function setStatus(msg, ok=true){
       statusText.textContent = msg;
@@ -129,6 +156,12 @@
     async function fetchJSON(url){
       const r = await fetch(url);
       if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return r.json();
+    }
+
+    async function postJSON(url, body){
+      const r = await fetch(url, {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(body)});
+      if(!r.ok) throw new Error(`${r.status}`);
       return r.json();
     }
 
@@ -185,26 +218,120 @@
           renderSummaryCard('Latest Test Date', td['Date'] ? new Date(td['Date']).toLocaleDateString() : '-')
         ].join('');
         testingData.innerHTML = renderTestingTable(td);
+
+        // Build testing-based percentiles for a quick visual until GPS is wired
+        await renderTestingRadars(team, player, td['Position']);
         setStatus('Loaded');
       }catch(e){ setStatus(e.message,false); }
     }
 
+    function isLowerBetter(metric){
+      const m = (metric||'').toUpperCase();
+      return m.includes('SPRINT') || m.includes('AGILITY');
+    }
+
+    function percentileFor(value, arr, metric){
+      const clean = arr.filter(v => v !== null && !Number.isNaN(v));
+      if(!clean.length || value == null || Number.isNaN(value)) return 50;
+      const better = isLowerBetter(metric)
+        ? clean.filter(v => v >= value).length
+        : clean.filter(v => v <= value).length;
+      return Math.max(1, Math.min(99, (better / clean.length) * 100));
+    }
+
+    async function renderTestingRadars(team, player, position){
+      // Fetch team roster and all testing_data
+      const players = await fetchJSON(`${API}/teams/${encodeURIComponent(team)}/players`);
+      const details = await Promise.all(players.map(p => fetchJSON(`${API}/teams/${encodeURIComponent(team)}/players/${encodeURIComponent(p)}`).catch(()=>({testing_data:{}}))));
+
+      // Build a pool of numeric metrics across team with enough coverage
+      const blacklist = new Set(['NAME','DATE','PARTICIPATION','POSITION','TEAM','SEASON PHASE','TRAINING PHASE','SEASON','EVENT ID']);
+      const metricCounts = {};
+      for(const d of details){
+        const td = d.testing_data || {};
+        for(const [k,v] of Object.entries(td)){
+          const key = String(k||'').trim();
+          if(!key) continue;
+          const upper = key.toUpperCase();
+          if(blacklist.has(upper)) continue;
+          const num = parseFloat(v);
+          if(!Number.isFinite(num)) continue;
+          metricCounts[key] = (metricCounts[key]||0)+1;
+        }
+      }
+      // Choose up to 5 best-covered metrics
+      const metrics = Object.entries(metricCounts)
+        .filter(([,cnt])=>cnt>=5)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,5)
+        .map(([k])=>k);
+
+      if(metrics.length === 0){
+        // fallback to common ones
+        ['VO2MAX','BROAD JUMP','MED BALL THROW AVG','10M SPRINT','AGILITY TEST'].forEach(m=>{ if(!metrics.includes(m)) metrics.push(m); });
+      }
+
+      const teamVals = Object.fromEntries(metrics.map(m => [m, details.map(d => parseFloat(d.testing_data?.[m])).map(v => (isFinite(v)? v: null))]));
+      const posDetails = details.filter(d => (d.testing_data?.['Position'] || '').toLowerCase() === (position || '').toLowerCase());
+      const posVals = Object.fromEntries(metrics.map(m => [m, posDetails.map(d => parseFloat(d.testing_data?.[m])).map(v => (isFinite(v)? v: null))]));
+
+      // Current player values
+      const me = details.find(d => d.player === player);
+      const myVals = Object.fromEntries(metrics.map(m => [m, parseFloat(me?.testing_data?.[m])]))
+
+      const teamPerc = metrics.map(m => percentileFor(myVals[m], teamVals[m], m));
+      const posPerc = metrics.map(m => percentileFor(myVals[m], posVals[m], m));
+
+      const cfg = (labels, data, label) => ({
+        type: 'radar',
+        data: { labels, datasets: [{
+          label,
+          data,
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34,197,94,0.2)',
+          pointBackgroundColor: '#22c55e'
+        }]},
+        options: { scales: { r: { beginAtZero: true, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.1)' } } }, plugins:{legend:{labels:{color:'#e5e7eb'}}} }
+      });
+
+      if(chartTeam) chartTeam.destroy();
+      if(chartPosition) chartPosition.destroy();
+      chartTeam = new Chart(document.getElementById('radarTeam'), cfg(metrics, teamPerc, 'vs Team'));
+      chartPosition = new Chart(document.getElementById('radarPosition'), cfg(metrics, posPerc, 'vs Position'));
+    }
+
     async function init(){
+      // Require login
+      if(!session){
+        loginOverlay.classList.remove('hidden');
+        return;
+      }
       setStatus('Loading teams…');
       try{
         const teams = await fetchJSON(`${API}/teams`);
+        const allowed = new Set(session.teams || []);
+        const visible = teams.filter(t => allowed.size === 0 || allowed.has(t));
         teamSelect.innerHTML = '';
-        teams.forEach(t=>{
+        visible.forEach(t=>{
           const opt = document.createElement('option');
           opt.value = t; opt.textContent = t; teamSelect.appendChild(opt);
         });
         setStatus('Choose a team');
-        if(teams.length){ teamSelect.value = teams[0]; await onTeamChange(); }
+        if(visible.length){ teamSelect.value = visible[0]; await onTeamChange(); }
       }catch(e){ setStatus(e.message,false); }
     }
 
     teamSelect.addEventListener('change', onTeamChange);
     playerSelect.addEventListener('change', onPlayerChange);
+    loginBtn.addEventListener('click', async ()=>{
+      loginError.textContent = '';
+      try{
+        const out = await postJSON(`${API}/auth/login`, {username: loginUser.value, password: loginPass.value});
+        session = out; localStorage.setItem('bolts_session', JSON.stringify(out));
+        loginOverlay.classList.add('hidden');
+        init();
+      }catch(e){ loginError.textContent = 'Invalid credentials'; }
+    });
     init();
   </script>
 </body>

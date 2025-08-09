@@ -1,13 +1,15 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from .bolts_core import list_teams_and_players, player_detail
+from .auth import verify_login
+from pydantic import BaseModel
 
 app = FastAPI(title="Boston Bolts Performance API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,  # wildcard + credentials is invalid; disable to support file:// origin
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -15,6 +17,19 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+class LoginReq(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/auth/login")
+def login(body: LoginReq):
+    out = verify_login(body.username, body.password)
+    if not out:
+        raise HTTPException(401, detail="invalid credentials")
+    return out
 
 
 @app.get("/teams")
