@@ -16,9 +16,53 @@ from playerdata_client import PlayerDataClient, sessions_to_df
 
 # === PAGE CONFIG ===
 st.set_page_config(
-    page_title="Player Readiness",
+    page_title="Boston Bolts • Performance Hub",
     page_icon="BostonBoltsLogo.png",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# === THEME / GLOBAL STYLES ===
+HUB_PRIMARY = "#1e3a8a"   # deep bolts blue
+HUB_ACCENT = "#22c55e"    # vibrant green
+HUB_BG = "#0f172a"        # slate-900
+HUB_CARD = "#111827"      # gray-900
+
+st.markdown(
+    f"""
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+      html, body, [class*="css"]  {{
+        font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      }}
+      /* App background */
+      .stApp {{
+        background: linear-gradient(180deg, {HUB_BG} 0%, #111827 100%);
+        color: #e5e7eb;
+      }}
+      /* Header */
+      .hub-header {{
+        display:flex; align-items:center; justify-content:space-between;
+        padding: 10px 16px; border-radius: 12px; margin-bottom: 8px;
+        background: linear-gradient(90deg, {HUB_PRIMARY} 0%, #0b3a80 100%);
+        box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+      }}
+      .hub-title {{ font-weight:800; font-size: 24px; color: white; letter-spacing: 0.5px; }}
+      .hub-sub {{ font-size: 13px; color: #d1fae5; margin-left: 8px; }}
+      .hub-logo {{ display:flex; align-items:center; gap: 12px; }}
+      .hub-chip {{ padding:4px 10px; border-radius: 999px; background: {HUB_ACCENT}; color:#052e16; font-weight:700; }}
+      /* Sidebar tweaks */
+      section[data-testid='stSidebar'] > div {{ background: #0b1220; }}
+      .css-1q7k6jd, .css-1d391kg {{ color: #e5e7eb !important; }}
+      /* Cards */
+      .hub-card {{
+        background: {HUB_CARD}; border: 1px solid rgba(255,255,255,0.06);
+        padding: 16px; border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+      }}
+      .hub-link a {{ color: {HUB_ACCENT}; text-decoration: none; font-weight: 600; }}
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 # === API CLIENT INIT (uses secrets.toml) ===
@@ -1848,28 +1892,34 @@ if "enable_api" not in st.session_state:
 
 # === LOGO & TITLE ===
 with st.container():
-    c1, c2, c3 = st.columns([0.08, 0.001, 0.72])
-    with c1: st.image("BostonBoltsLogo.png", width=120)
-    with c2: st.markdown("<div style='border-left:2px solid gray; height:90px;'></div>", unsafe_allow_html=True)
-    with c3: st.image("MLSNextLogo.png", width=120)
-with st.container():
-    if st.session_state.page == "Home":
-        title = "Performance Analytics"
-    elif st.session_state.page == "Dashboard Selection":
-        title = f"{st.session_state.selected_team} - Select Dashboard"
-    elif st.session_state.page == "Player Gauges Dashboard":
-        title = f"Player Readiness for {st.session_state.selected_team}"
-    elif st.session_state.page == "ACWR Dashboard":
-        title = f"ACWR Analysis for {st.session_state.selected_team}"
-    elif st.session_state.page == "Testing Data Dashboard":
-        title = f"Testing Data for {st.session_state.selected_team}"
-    else:
-        title = "Performance Analytics"
-
     st.markdown(
-        f"<h1 style='text-align:center;font-size:60px;margin-top:-40px;'>{title}</h1>",
-        unsafe_allow_html=True
+        """
+        <div class='hub-header'>
+          <div class='hub-logo'>
+            <img src='https://raw.githubusercontent.com/Deny461/PR-Streamlit/main/BostonBoltsLogo.png' width='60'>
+            <div class='hub-title'>Boston Bolts • Performance Hub <span class='hub-sub'>Modern analytics for coaches</span></div>
+          </div>
+          <div class='hub-chip'>LIVE</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
+
+# === SIMPLE PERSISTENT NAV IN SIDEBAR ===
+nav_options = [
+    "Home",
+    "Player Gauges Dashboard",
+    "ACWR Dashboard",
+    "Physical Radar Charts",
+    "Testing Data Dashboard",
+]
+if "page" not in st.session_state:
+    st.session_state.page = "Home"
+
+choice = st.sidebar.radio("Navigate", nav_options, index=nav_options.index(st.session_state.page) if st.session_state.page in nav_options else 0)
+if choice != st.session_state.page:
+    st.session_state.page = choice
+    st.experimental_rerun()
 
 # === LANDING PAGE ===
 if st.session_state.page == "Home":
