@@ -54,19 +54,16 @@
         </div>
         <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
           <div class="bg-white/5 rounded-lg p-3 border border-white/10">
-            <div class="text-xs text-white/70">Quick Metric</div>
-            <div class="text-2xl font-extrabold">Top Speed</div>
-            <div class="text-sm text-emerald-300">75th percentile (Team)</div>
+            <div class="text-xs text-white/70">Team</div>
+            <select id="teamSelect" class="w-full mt-1 bg-transparent outline-none"></select>
           </div>
           <div class="bg-white/5 rounded-lg p-3 border border-white/10">
-            <div class="text-xs text-white/70">Quick Metric</div>
-            <div class="text-2xl font-extrabold">HSR Distance</div>
-            <div class="text-sm text-emerald-300">68th percentile (Position)</div>
+            <div class="text-xs text-white/70">Player</div>
+            <select id="playerSelect" class="w-full mt-1 bg-transparent outline-none"></select>
           </div>
           <div class="bg-white/5 rounded-lg p-3 border border-white/10">
-            <div class="text-xs text-white/70">Quick Metric</div>
-            <div class="text-2xl font-extrabold">Sprint Count</div>
-            <div class="text-sm text-emerald-300">62nd percentile (Team)</div>
+            <div class="text-xs text-white/70">Status</div>
+            <div id="statusText" class="text-sm text-emerald-300">Ready</div>
           </div>
         </div>
       </div>
@@ -87,11 +84,7 @@
         <h2 class="text-xl font-extrabold">Player Gauges</h2>
         <span class="text-xs text-white/60">Excel is master data • API enriched</span>
       </div>
-      <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="card rounded-xl p-5"><div class="text-white/70 text-sm">Gauge 1</div><div class="mt-2 h-40 bg-white/5 rounded-md border border-white/10"></div></div>
-        <div class="card rounded-xl p-5"><div class="text-white/70 text-sm">Gauge 2</div><div class="mt-2 h-40 bg-white/5 rounded-md border border-white/10"></div></div>
-        <div class="card rounded-xl p-5"><div class="text-white/70 text-sm">Gauge 3</div><div class="mt-2 h-40 bg-white/5 rounded-md border border-white/10"></div></div>
-      </div>
+      <div id="playerSummary" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4"></div>
     </section>
 
     <section id="acwr" class="mt-10">
@@ -114,11 +107,106 @@
 
     <section id="testing" class="mt-10 mb-12">
       <h2 class="text-xl font-extrabold">Testing Data</h2>
-      <div class="mt-4 card rounded-xl p-5 h-48 border border-white/10"></div>
+      <div id="testingData" class="mt-4 card rounded-xl p-5 border border-white/10"></div>
     </section>
 
     <footer class="mt-6 text-center text-xs text-white/50">© Boston Bolts • Performance Hub</footer>
   </div>
+
+  <script>
+    const API = 'http://127.0.0.1:8800';
+    const teamSelect = document.getElementById('teamSelect');
+    const playerSelect = document.getElementById('playerSelect');
+    const statusText = document.getElementById('statusText');
+    const playerSummary = document.getElementById('playerSummary');
+    const testingData = document.getElementById('testingData');
+
+    function setStatus(msg, ok=true){
+      statusText.textContent = msg;
+      statusText.className = ok ? 'text-sm text-emerald-300' : 'text-sm text-red-300';
+    }
+
+    async function fetchJSON(url){
+      const r = await fetch(url);
+      if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return r.json();
+    }
+
+    function renderSummaryCard(title, value){
+      return `
+        <div class="card rounded-xl p-5">
+          <div class="text-white/70 text-sm">${title}</div>
+          <div class="mt-2 text-2xl font-extrabold">${value ?? '-'}</div>
+        </div>
+      `;
+    }
+
+    function renderTestingTable(obj){
+      if(!obj){ return '<div class="text-white/60">No testing data found.</div>'; }
+      const entries = Object.entries(obj).filter(([k,v])=> k && v !== null && v !== '' );
+      return `
+        <div class="overflow-auto">
+          <table class="w-full text-sm">
+            ${entries.map(([k,v])=>`<tr class="border-b border-white/10"><td class="py-1 pr-3 text-white/60">${k}</td><td class="py-1">${v}</td></tr>`).join('')}
+          </table>
+        </div>
+      `;
+    }
+
+    async function onTeamChange(){
+      const team = teamSelect.value;
+      playerSelect.innerHTML = '';
+      setStatus('Loading players…');
+      try{
+        const players = await fetchJSON(`${API}/teams/${encodeURIComponent(team)}/players`);
+        players.forEach(p=>{
+          const opt = document.createElement('option');
+          opt.value = p; opt.textContent = p; playerSelect.appendChild(opt);
+        });
+        setStatus('Choose a player');
+        if(players.length){ playerSelect.value = players[0]; onPlayerChange(); }
+      }catch(e){ setStatus(e.message,false); }
+    }
+
+    async function onPlayerChange(){
+      const team = teamSelect.value;
+      const player = playerSelect.value;
+      setStatus('Loading player…');
+      try{
+        const data = await fetchJSON(`${API}/teams/${encodeURIComponent(team)}/players/${encodeURIComponent(player)}`);
+        const phv = data.phv || {};
+        const td = data.testing_data || {};
+        playerSummary.innerHTML = [
+          renderSummaryCard('Player', data.player),
+          renderSummaryCard('Team', data.team),
+          renderSummaryCard('Height (cm)', phv.Height),
+          renderSummaryCard('Weight (kg)', phv.Weight),
+          renderSummaryCard('Position', td['Position']),
+          renderSummaryCard('Latest Test Date', td['Date'] ? new Date(td['Date']).toLocaleDateString() : '-')
+        ].join('');
+        testingData.innerHTML = renderTestingTable(td);
+        setStatus('Loaded');
+      }catch(e){ setStatus(e.message,false); }
+    }
+
+    async function init(){
+      setStatus('Loading teams…');
+      try{
+        const teams = await fetchJSON(`${API}/teams`);
+        teamSelect.innerHTML = '';
+        teams.forEach(t=>{
+          const opt = document.createElement('option');
+          opt.value = t; opt.textContent = t; teamSelect.appendChild(opt);
+        });
+        setStatus('Choose a team');
+        if(teams.length){ teamSelect.value = teams[0]; await onTeamChange(); }
+      }catch(e){ setStatus(e.message,false); }
+    }
+
+    teamSelect.addEventListener('change', onTeamChange);
+    playerSelect.addEventListener('change', onPlayerChange);
+    init();
+  </script>
 </body>
 </html>
 
